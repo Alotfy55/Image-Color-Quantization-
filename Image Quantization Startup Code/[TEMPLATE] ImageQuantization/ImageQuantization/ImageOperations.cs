@@ -245,5 +245,43 @@ namespace ImageQuantization
         }
 
 
+        public static Dictionary<RGBPixel, List<KeyValuePair<double, RGBPixel>>> constructGrapgh(RGBPixel[,] imageMatrix)
+        {
+            int height = GetHeight(imageMatrix), width = GetWidth(imageMatrix);
+            Dictionary<RGBPixel, int> distinctColors = new Dictionary<RGBPixel, int>();
+            Dictionary<RGBPixel, List<KeyValuePair<double, RGBPixel>>> Graph = new Dictionary<RGBPixel, List<KeyValuePair<double, RGBPixel>>>();
+            for (int i = 0; i < height; i++)
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    distinctColors[imageMatrix[i, j]] = 1;
+                }
+            }
+
+
+            foreach (KeyValuePair<RGBPixel, int> i in distinctColors)
+            {
+                foreach (KeyValuePair<RGBPixel, int> j in distinctColors)
+                {
+                    int x = j.Key.red;
+                    if (i.Key.red == j.Key.red && i.Key.blue == j.Key.blue && i.Key.green == j.Key.green)
+                    {
+                        continue;
+                    }
+                    if (!Graph.ContainsKey(i.Key))
+                        Graph[i.Key] = new List<KeyValuePair<double, RGBPixel>>();
+                    KeyValuePair<double, RGBPixel> currentNode = new KeyValuePair<double, RGBPixel>(GetEgdeWeight(i.Key, j.Key), j.Key);
+                    Graph[i.Key].Add(currentNode);
+                }
+
+            }
+
+
+            return Graph;
+        }
+        public static double GetEgdeWeight(RGBPixel Color1, RGBPixel Color2)
+        {
+            return Math.Sqrt((Math.Pow(Color1.blue - Color2.blue, 2)) + (Math.Pow(Color1.red - Color2.red, 2)) + (Math.Pow(Color1.green - Color2.green, 2)));
+        }
     }
 }
