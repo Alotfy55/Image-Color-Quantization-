@@ -39,7 +39,9 @@ namespace ImageQuantization
             ImageOperations.DisplayImage(ImageMatrix, pictureBox2);
         }
 
-       
-       
+        private void panel1_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
     }
 }
