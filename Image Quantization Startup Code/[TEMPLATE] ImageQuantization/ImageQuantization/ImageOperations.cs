@@ -163,11 +163,27 @@ namespace ImageQuantization
         {
             int Height = GetHeight(ImageMatrix);
             int Width = GetWidth(ImageMatrix);
-
+            
             RGBPixelD[,] VerFiltered = new RGBPixelD[Height, Width];
             RGBPixel[,] Filtered = new RGBPixel[Height, Width];
 
-
+            for (int i = 0; i<Height; i++)
+            {
+                for ( int j = 0; j < Width; j++)
+                {
+                    string s="";
+                    s = ImageMatrix[i, j].blue.ToString() + '-';
+                    s += ImageMatrix[i, j].green.ToString() + '+';
+                    s += ImageMatrix[i, j].red.ToString();
+                    RGBPixelD colour = map[s];
+                    Byte ans = Convert.ToByte( map[s].blue);
+                    ImageMatrix[i, j].blue = ans;
+                    ans = Convert.ToByte(map[s].red);
+                    ImageMatrix[i, j].red = ans;
+                    ans = Convert.ToByte(map[s].green);
+                    ImageMatrix[i, j].green = ans;
+                }
+            }
             // Create Filter in Spatial Domain:
             //=================================
             //make the filter ODD size
@@ -249,235 +265,392 @@ namespace ImageQuantization
         public static RGBPixel[] constructGraph(RGBPixel[,] imageMatrix)
         {
             int height = GetHeight(imageMatrix), width = GetWidth(imageMatrix);
-            Dictionary<RGBPixel, int> distinctColors = new Dictionary<RGBPixel, int>();
+            Dictionary<string, int> distinctColors = new Dictionary<string, int>();
             int counter = 0;
+            string s="";
             for (int i = 0; i < height; i++)
             {
                 for (int j = 0; j < width; j++)
                 {
-                    if (!(distinctColors.ContainsKey(imageMatrix[i, j])))
+                    s = imageMatrix[i, j].blue.ToString() + '-';
+                    s += imageMatrix[i, j].green.ToString() + '+';
+                    s += imageMatrix[i, j].red.ToString();
+                    if (!(distinctColors.ContainsKey(s)))
                     {
-                        distinctColors[imageMatrix[i, j]] = counter;
+                        distinctColors[s] = counter;
                         counter++;
                     }
-
                 }
             }
-
             Console.WriteLine("The Output is:");
             Console.Write("Number of Distinct colors: ");
             Console.WriteLine(distinctColors.Count);
-            int s = distinctColors.Count;
-            RGBPixel[] Graph = new RGBPixel[s];
-            foreach (var it in distinctColors)
+            int ss = distinctColors.Count;
+            RGBPixel[] Graph = new RGBPixel[ss];
+            
+           
+            
+           foreach (var it in distinctColors)
             {
-                Graph[it.Value] = it.Key;
+                s = it.Key;
+                string red = "", green = "", blue = "";
+                int length = s.Length;
+                for (int i = 0; i < length - 2; i++)
+                {
+                    if (s[0] == '-' && s[1] == '+')
+                    {
+                        red += s[2];
+                        s = s.Remove(2, 1);
+                    }
+                    else if (s[0] == '-')
+                    {
+                        green += s[1];
+                        s = s.Remove(1, 1);
+                    }
+                    else
+                    {
+                        blue += s[0];
+                        s = s.Remove(0, 1);
+                    }
+                }
+                Graph[it.Value].blue = Convert.ToByte(blue);
+                Graph[it.Value].green = Convert.ToByte(green);
+                Graph[it.Value].red = Convert.ToByte(red);
+
 
             }
             return Graph;
-
         }
         public static double GetEgdeWeight(RGBPixel Color1, RGBPixel Color2)
         {
             return Math.Sqrt((Math.Pow(Color1.blue - Color2.blue, 2)) + (Math.Pow(Color1.red - Color2.red, 2)) + (Math.Pow(Color1.green - Color2.green, 2)));
         }
-        public class HeapNode
-        {
-            public int vertex;
-            public double key;
-            public HeapNode()
-            {
-            }
-        }
+         public class HeapNode
+          {
+              public int vertex;
+              public double key;
+              public HeapNode()
+              {
+              }
+          }
+          public class ResultSet
+          {
+              public int parent;
+              public double weight;
+              public int current;
+              public ResultSet()
+              {
+              }
+          }
+          public class MinHeap
+          {
+              public int capacity;
+              public int Size;
+              public HeapNode[] mH;
+              public int[] indexes;
 
-        public class ResultSet
-        {
-            public int parent;
-            public double weight;
-            public ResultSet()
-            {
-            }
-        }
+              public MinHeap(RGBPixel[] G)
+              {
+                  this.capacity = G.Length;
+                  mH = new HeapNode[capacity + 1];
+                  mH[0] = new HeapNode();
+                  mH[0].key = double.MinValue;
+                  indexes = new int[G.Length];
+                  Size = 0;
+              }
+              public void insert(HeapNode x)
+              {
+                  Size++;
+                  int idx = Size;
+                  mH[idx] = x;
+                  indexes[x.vertex] = idx;
+                  bubbleUp(idx);
+              }
+              public void bubbleUp(int pos)
+              {
+                  int parentIdx = pos / 2;
+                  int currentIdx = pos;
+                  while (currentIdx > 0 && mH[parentIdx].key > mH[currentIdx].key)
+                  {
+                      HeapNode currentNode = mH[currentIdx];
+                      HeapNode parentNode = mH[parentIdx];
 
+                      indexes[currentNode.vertex] = parentIdx;
+                      indexes[parentNode.vertex] = currentIdx;
+                      swap(currentIdx, parentIdx);
+                      currentIdx = parentIdx;
+                      parentIdx = parentIdx / 2;
+                  }
+              }
+              public void swap(int a, int b)
+              {
+                  HeapNode temp = mH[a];
+                  mH[a] = mH[b];
+                  mH[b] = temp;
+              }
+              public HeapNode extractMin()
+              {
+                  HeapNode min = mH[1];
+                  HeapNode lastNode = mH[Size];
+                  indexes[lastNode.vertex] = 1;
+                  mH[1] = lastNode;
+                  mH[Size] = null;
+                  sinkDown(1);
+                  Size--;
+                  return min;
+              }
 
-        public class MinHeap
-        {
+              public void sinkDown(int k)
+              {
+                  int smallest = k;
+                  int leftChildIdx = 2 * k;
+                  int rightChildIdx = 2 * k + 1;
+                  if (leftChildIdx < heapSize() && mH[smallest].key > mH[leftChildIdx].key)
+                  {
+                      smallest = leftChildIdx;
+                  }
+                  if (rightChildIdx < heapSize() && mH[smallest].key > mH[rightChildIdx].key)
+                  {
+                      smallest = rightChildIdx;
+                  }
+                  if (smallest != k)
+                  {
+                      HeapNode smallestNode = mH[smallest];
+                      HeapNode kNode = mH[k];
+                      indexes[smallestNode.vertex] = k;
+                      indexes[kNode.vertex] = smallest;
+                      swap(k, smallest);
+                      sinkDown(smallest);
+                  }
+              }
+              public bool isEmpty()
+              {
+                  return Size == 0;
+              }
 
-            public int capacity;
-            public int Size;
-            public HeapNode[] mH;
-            public int[] indexes;
+              public int heapSize()   
+              {
+                  return Size;
+              }
+          }
+          public static void decreaseKey(MinHeap minHeap, double newKey, int vertex)
+          {
 
+              int index = minHeap.indexes[vertex];
 
-            public MinHeap(RGBPixel[] G)
-            {
-                this.capacity = G.Length;
-                mH = new HeapNode[capacity + 1];
-                mH[0] = new HeapNode();
-                mH[0].key = double.MinValue;
-                indexes = new int[G.Length];
-                //mH[0].vertex = null;
-                Size = 0;
-            }
-
-            public void insert(HeapNode x)
-            {
-                Size++;
-                int idx = Size;
-                mH[idx] = x;
-                indexes[x.vertex] = idx;
-                bubbleUp(idx);
-            }
-
-            public void bubbleUp(int pos)
-            {
-                int parentIdx = pos / 2;
-                int currentIdx = pos;
-                while (currentIdx > 0 && mH[parentIdx].key > mH[currentIdx].key)
-                {
-                    HeapNode currentNode = mH[currentIdx];
-                    HeapNode parentNode = mH[parentIdx];
-
-                    indexes[currentNode.vertex] = parentIdx;
-                    indexes[parentNode.vertex] = currentIdx;
-                    swap(currentIdx, parentIdx);
-                    currentIdx = parentIdx;
-                    parentIdx = parentIdx / 2;
-                }
-            }
-
-            public HeapNode extractMin()
-            {
-                HeapNode min = mH[1];
-                HeapNode lastNode = mH[Size];
-                indexes[lastNode.vertex] = 1;
-                mH[1] = lastNode;
-                mH[Size] = null;
-                sinkDown(1);
-                Size--;
-                return min;
-            }
-
-            public void sinkDown(int k)
-            {
-                int smallest = k;
-                int leftChildIdx = 2 * k;
-                int rightChildIdx = 2 * k + 1;
-                if (leftChildIdx < heapSize() && mH[smallest].key > mH[leftChildIdx].key)
-                {
-                    smallest = leftChildIdx;
-                }
-                if (rightChildIdx < heapSize() && mH[smallest].key > mH[rightChildIdx].key)
-                {
-                    smallest = rightChildIdx;
-                }
-                if (smallest != k)
-                {
-
-                    HeapNode smallestNode = mH[smallest];
-                    HeapNode kNode = mH[k];
-
-                    //swap the positions
-                    indexes[smallestNode.vertex] = k;
-                    indexes[kNode.vertex] = smallest;
-                    swap(k, smallest);
-                    sinkDown(smallest);
-                }
-            }
-
-            public void swap(int a, int b)
-            {
-                HeapNode temp = mH[a];
-                mH[a] = mH[b];
-                mH[b] = temp;
-            }
-
-            public bool isEmpty()
-            {
-                return Size == 0;
-            }
-
-            public int heapSize()
-            {
-                return Size;
-            }
-        }
-
-        public static void primMST(RGBPixel[,] imagematrix)
-        {
-            RGBPixel[] Graph = constructGraph(imagematrix);
+              HeapNode node = minHeap.mH[index];
+              node.key = newKey;
+              minHeap.bubbleUp(index);
+          }
+          public static void primMST(RGBPixel[,] imagematrix)
+          {
+              RGBPixel[] Graph = constructGraph(imagematrix);
             int size = Graph.Length;
-            bool[] inHeap = new bool[size];
-            ResultSet[] resultSet = new ResultSet[size];
-            double[] key = new double[size];
-            HeapNode[] heapNodes = new HeapNode[size];
+              bool[] inHeap = new bool[size];
+              ResultSet[] resultSet = new ResultSet[size];
+              double[] key = new double[size];
+              HeapNode[] heapNodes = new HeapNode[size];
 
-            for (int i = 0; i < size; i++)
+              for (int i = 0; i < size; i++)
+              {
+                  heapNodes[i] = new HeapNode();
+                  heapNodes[i].vertex = i;
+                  heapNodes[i].key = double.MaxValue;
+                  resultSet[i] = new ResultSet();
+                  inHeap[i] = true;
+                  key[i] = double.MaxValue;
+              }
+              heapNodes[0].key = 0;
+
+              MinHeap minHeap = new MinHeap(Graph);
+              for (int i = 0; i < size; i++)
+              {
+                  minHeap.insert(heapNodes[i]);
+              }
+
+              while (!minHeap.isEmpty())
+              {
+                  HeapNode extractedNode = minHeap.extractMin();
+
+                  int extractedVertex = extractedNode.vertex;
+                  inHeap[extractedVertex] = false;
+
+                  for (int i = 0; i < Graph.Length; i++)
+                  {
+                      if (inHeap[i])
+                      {
+                          double newKey = GetEgdeWeight(Graph[extractedVertex], Graph[i]);
+                          if (key[i] > newKey)
+                          {
+
+                              decreaseKey(minHeap, newKey, i);
+                              resultSet[i].parent = extractedVertex;
+                              resultSet[i].weight = newKey;
+                              resultSet[i].current = i;
+                              key[i] = newKey;
+                          }
+                      }
+                  }
+
+              }
+
+              double W = 0;
+
+            Array.Sort(resultSet, (x, y) => y.weight.CompareTo(x.weight));
+              for (int i = 0; i < Graph.Length; i++)
+              {
+                  W += resultSet[i].weight;
+              }
+              Console.Write("Sum of MST is: ");
+              Console.WriteLine(W);
+            clustering(resultSet, Graph);
+            //Clustering
+        }
+        public static int k = 3;
+        public static Dictionary<string, RGBPixelD> map;
+        public static Dictionary<string, RGBPixelD> clustering(ResultSet[] mST , RGBPixel[] Distinct)
+        {
+            int[] repres = new int[Distinct.Length];
+            int[] size = new int[Distinct.Length];
+            RGBPixelD[] distClusters = new RGBPixelD[Distinct.Length];
+            for ( int i = 0; i < Distinct.Length; i++)
             {
-                heapNodes[i] = new HeapNode();
-                heapNodes[i].vertex = i;
-                heapNodes[i].key = double.MaxValue;
-                resultSet[i] = new ResultSet();
-                inHeap[i] = true;
-                key[i] = double.MaxValue;
+                distClusters[i].blue = Distinct[i].blue;
+                distClusters[i].green = Distinct[i].green;
+                distClusters[i].red = Distinct[i].red;
             }
-            heapNodes[0].key = 0;
 
-            MinHeap minHeap = new MinHeap(Graph);
-            for (int i = 0; i < size; i++)
+            for ( int i = 0; i < Distinct.Length; i++)
             {
-                minHeap.insert(heapNodes[i]);
+                repres[i] = i;
+                size[i] = 1;
             }
-
-            while (!minHeap.isEmpty())
+            int clusters = Distinct.Length; 
+            
+            for (int i = mST.Length-1; i>=0; i--)
             {
-                HeapNode extractedNode = minHeap.extractMin();
+                clusters = uniteSet(mST[i].current, mST[i].parent, repres, size , clusters);
+                if (clusters == k)
+                    break;
+            }
+            bool[] visited = new bool[mST.Length ];
+            RGBPixelD accumSum;
+            accumSum.blue = 0;
+            accumSum.green = 0;
+            accumSum.red = 0;
+            
+            for ( int i = mST.Length-1; i >=0; i--)
+            {
+                repres[i] = getSum(i , visited , repres , distClusters , accumSum ,size);
+            }
+            for (int i = mST.Length - 1; i >= 0; i--)
+            {
+                if (size[i] == 0)
+                    continue;
+                distClusters[i].blue /= size[i];
+                distClusters[i].green /= size[i];
+                distClusters[i].red /= size[i];
 
-                int extractedVertex = extractedNode.vertex;
-                inHeap[extractedVertex] = false;
+            }
+            map = new Dictionary<string, RGBPixelD> ();
 
-                for (int i = 0; i < Graph.Length; i++)
+            for (int i = mST.Length-1;i>=0;i-- )
+            {
+                string s = "";
+                s = Distinct[i].blue.ToString() + '-';
+                s += Distinct[i].green.ToString() + '+';
+                s += Distinct[i].red.ToString();
+
+                if (size[i] == 0)
                 {
-                    if (inHeap[i])
-                    {
-                        double newKey = GetEgdeWeight(Graph[extractedVertex], Graph[i]);
-                        if (key[i] > newKey)
-                        {
-
-                            decreaseKey(minHeap, newKey, i);
-                            resultSet[i].parent = extractedVertex;
-                            resultSet[i].weight = newKey;
-                            key[i] = newKey;
-                        }
-                    }
+                    map[s] = distClusters[repres[i]];
                 }
+                else
+                    map[s] = distClusters[i];
             }
-
-            double W = printMST(resultSet, Graph);
+            Console.WriteLine("oooooooweeeeeee");
+            return map;
         }
-
-        public static void decreaseKey(MinHeap minHeap, double newKey, int vertex)
+        public static int uniteSet(int a, int b, int[] repres, int[] size, int k )
         {
-
-            int index = minHeap.indexes[vertex];
-
-            HeapNode node = minHeap.mH[index];
-            node.key = newKey;
-            minHeap.bubbleUp(index);
-        }
-
-        public static double printMST(ResultSet[] resultSet, RGBPixel[] graph)
-        {
-            double total_min_weight = 0;
-
-            for (int i = 0; i < graph.Length; i++)
+            a = findRep(a , repres);
+            b = findRep(b , repres);
+            if (a!=b)
             {
-                total_min_weight += resultSet[i].weight;
+                if (size[a] < size[b])
+                {
+                    repres[a] = b;
+                    size[b] += size[a];
+                }
+                else
+                {
+                    repres[b] = a;
+                    size[a] += size[b];
+                }
+                k--;
             }
-            Console.Write("Sum of MST is: ");
-            Console.WriteLine(total_min_weight);
-            return total_min_weight;
+            return k ;
+        }
+        public static int findRep(int a , int[] repres)
+        {
+            if (a == repres[a])
+            {
+                return a;
+            }
+            else
+                return repres[a] = findRep(repres[a] ,repres);
+        }
+        public static int getSum(int a , bool [] visited , int[] parent , RGBPixelD[] distinct , RGBPixelD accumulativeSum , int[] size)
+        {
+            if (a == parent[a])
+            {
+                distinct[a].blue +=  accumulativeSum.blue;
+                distinct[a].red +=   accumulativeSum.red;
+                distinct[a].green += accumulativeSum.green; 
+                return a;
+            }
+            else if(!visited[a])
+            {
+                visited[a] = true;
+                accumulativeSum.blue += distinct[a].blue;
+                accumulativeSum.red += distinct[a].red;
+                accumulativeSum.green += distinct[a].green;
+            }
+            size[a] = 0;
+            return parent[a] = getSum(parent[a] , visited , parent , distinct , accumulativeSum ,size);
         }
     }
 }
 
+
+/*
+ *  string red = "", green = "", blue = "";
+                int length = s.Length;
+                for (int i = 0; i < length - 2; i++)
+                {
+                    if (s[0] == '-' && s[1] == '+')
+                    {
+                        red += s[2];
+                        s = s.Remove(2, 1);
+                    }
+                    else if (s[0] == '-')
+                    {
+                        green += s[1];
+                        s = s.Remove(1, 1);
+                    }
+                    else
+                    {
+                        blue += s[0];
+                        s = s.Remove(0, 1);
+                    }
+                }
+                Graph[it.Value].blue = Convert.ToByte(blue);
+                Graph[it.Value].green = Convert.ToByte(green);
+                Graph[it.Value].red = Convert.ToByte(red);
+*/
+/*
+ * 
+ *           s = imageMatrix[i, j].blue.ToString() + '-';
+                    s += imageMatrix[i, j].green.ToString() + '+';
+                    s += imageMatrix[i, j].red.ToString();
+*/
