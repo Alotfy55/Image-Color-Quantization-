@@ -13,7 +13,7 @@ information is lost and the new quantized image should differ as little as possi
 
 ## Description
 The project aims to quantize image to a smaller size by decreasing the colors in it so the image looks a bit different
-using smaller colors. All is listed in the documentation which is attached with the project or through this [link](https://docs.google.com/document/d/1lynXuhKZ_zWtjY5fHz2EP6pXDDmQy2oQLSRrjAMjPN8/edit?usp=sharing).
+using smaller colors. All is listed in the documentation which is attached with the project or through this [link](https://docs.google.com/document/d/1lynXuhKZ_zWtjY5fHz2EP6pXDDmQy2oQLSRrjAMjPN8/edit?usp=sharing)
 any comment is appreciated.
 
 
